@@ -155,7 +155,7 @@
   <div style="margin-top:16px;font-size:11px;color:var(--text2);max-width:340px;text-align:center;line-height:1.8">
     คลิกตัวละครในห้องโถง แล้วคลิกลิฟต์เพื่อส่งตัวละครเข้าลิฟต์<br>
     กดยืนยันเพื่อให้ลิฟต์เคลื่อนที่ขึ้น<br>
-    ส่งทุกคนถึงชั้นของตัวเองภายใน 3 นาที!
+    ส่งทุกคนถึงชั้นของตัวเองภายใน 1 นาที!
   </div>
 </div>
 
@@ -254,7 +254,7 @@
 <script>
 const TOTAL_FLOORS = 8;
 const TOTAL_CHARS = 10;
-const GAME_TIME = 180;
+const GAME_TIME = 60;
 const MAX_CAPACITY = 10;
 const TRAVEL_TIME = 1000; // ms per floor
 const STOP_TIME = 500; // ms per stop
@@ -331,7 +331,7 @@ function startGame(){
   document.getElementById('delivered-count').textContent = 0;
   document.getElementById('phase-label').textContent = 'ASSIGN PHASE';
   document.getElementById('timer-display').classList.remove('urgent');
-  document.getElementById('timer-display').textContent='3:00';
+  document.getElementById('timer-display').textContent='1:00';
   document.getElementById('progress-bar').style.width='100%';
 
   renderLobby();
@@ -496,25 +496,35 @@ async function animateLift(li){
   const correct=pass.filter(cid=>{const c=characters.find(x=>x.id===cid);return c&&c.floor>=cfg.min&&c.floor<=cfg.max});
   const wrong=pass.filter(cid=>!correct.includes(cid));
 
-  // Build stop list (sorted ascending)
+  // Build stop list (sorted ascending) from correct passengers
   const stops=[...new Set(correct.map(cid=>{const c=characters.find(x=>x.id===cid);return c.floor}))].sort((a,b)=>a-b);
 
-  // Travel up, stop at each floor
+  // If only wrong passengers, lift must travel to cfg.max before returning
+  const topFloor = stops.length > 0 ? stops[stops.length-1] : cfg.max;
+
+  // Travel up, stopping at correct floors
   let currentFloor=1;
-  for(const stop of stops){
-    // Travel to floor
-    const floorsToTravel=Math.abs(stop-currentFloor);
-    await travelFloors(li,currentFloor,stop,TRAVEL_TIME*floorsToTravel);
-    currentFloor=stop;
-    // Drop off chars at this floor
-    const dropping=correct.filter(cid=>{const c=characters.find(x=>x.id===cid);return c&&c.floor===stop});
-    for(const cid of dropping){
-      const c=characters.find(x=>x.id===cid);
-      if(c){c.delivered=true;c.inLift=-1;deliveredCount++;}
+
+  if(stops.length > 0){
+    for(const stop of stops){
+      const floorsToTravel=Math.abs(stop-currentFloor);
+      await travelFloors(li,currentFloor,stop,TRAVEL_TIME*floorsToTravel);
+      currentFloor=stop;
+      // Drop off chars at this floor
+      const dropping=correct.filter(cid=>{const c=characters.find(x=>x.id===cid);return c&&c.floor===stop});
+      for(const cid of dropping){
+        const c=characters.find(x=>x.id===cid);
+        if(c){c.delivered=true;c.inLift=-1;deliveredCount++;}
+      }
+      flashFloor(stop);
+      renderBuildingFloor(stop);
+      document.getElementById('delivered-count').textContent=deliveredCount;
+      await delay(STOP_TIME);
     }
-    flashFloor(stop);
-    renderBuildingFloor(stop);
-    document.getElementById('delivered-count').textContent=deliveredCount;
+  } else {
+    // No correct passengers — travel to top of this lift's range
+    await travelFloors(li,currentFloor,cfg.max,TRAVEL_TIME*cfg.max);
+    currentFloor=cfg.max;
     await delay(STOP_TIME);
   }
 
@@ -644,7 +654,7 @@ function showResult(win,reason=''){
   const stats=document.getElementById('result-stats');
   stats.innerHTML=`
     <div class="result-stat"><span>Delivered</span><span class="result-val">${deliveredCount} / ${TOTAL_CHARS}</span></div>
-    <div class="result-stat"><span>Time used</span><span class="result-val">${fmtTime(GAME_TIME-timeLeft)} / 3:00</span></div>
+    <div class="result-stat"><span>Time used</span><span class="result-val">${fmtTime(GAME_TIME-timeLeft)} / 1:00</span></div>
     <div class="result-stat"><span>Remaining</span><span class="result-val">${characters.filter(c=>!c.delivered).length} people</span></div>
   `;
 }
