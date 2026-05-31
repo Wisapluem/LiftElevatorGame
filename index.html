@@ -5,676 +5,593 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Lift Elevator</title>
 <style>
-  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Noto+Sans+Thai:wght@400;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+:root{
+  --bg:#0a0f1e;--surface:#111827;--surface2:#1a2438;
+  --accent:#00e5ff;--accent2:#ff6b35;--accent3:#a8ff3e;
+  --text:#e8eaf6;--text2:#8892b0;
+  --lA:#1e88e5;--lB:#7b1fa2;--lC:#e65100;
+  --fh:44px; /* floor row height */
+}
+body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;height:100vh;overflow:hidden;user-select:none}
 
-  *{margin:0;padding:0;box-sizing:border-box}
-  :root{
-    --bg:#0a0f1e;
-    --surface:#111827;
-    --surface2:#1a2438;
-    --accent:#00e5ff;
-    --accent2:#ff6b35;
-    --accent3:#a8ff3e;
-    --text:#e8eaf6;
-    --text2:#8892b0;
-    --lift1:#1e88e5;
-    --lift2:#7b1fa2;
-    --lift3:#e65100;
-    --floor-h:28px;
-  }
-  body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;min-height:100vh;overflow:hidden;user-select:none}
+/* ── SCREENS ── */
+.screen{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg);transition:opacity .3s,transform .3s}
+.screen.out-left{opacity:0;transform:translateX(-50px);pointer-events:none}
+.screen.out-right{opacity:0;transform:translateX(50px);pointer-events:none}
+.screen.hidden{display:none}
 
-  /* SCREENS */
-  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;transition:opacity .4s}
-  .screen.hidden{opacity:0;pointer-events:none}
+/* ── TOPBAR ── */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--surface);border-bottom:1px solid rgba(0,229,255,.18);height:50px;flex-shrink:0}
+.topbar-title{font-size:12px;letter-spacing:.2em;color:var(--accent)}
+.timer{font-size:22px;font-weight:700;color:var(--accent3);font-variant-numeric:tabular-nums}
+.timer.urgent{color:#ff4444;animation:pulse .5s infinite alternate}
+@keyframes pulse{from{opacity:1}to{opacity:.4}}
+.phase-lbl{font-size:10px;letter-spacing:.1em;color:var(--text2);text-align:center}
+.score{font-size:11px;color:var(--text2);text-align:right}
+.score b{color:var(--accent)}
+.pbar-wrap{height:3px;background:rgba(255,255,255,.08);flex-shrink:0}
+.pbar{height:100%;background:var(--accent3);transition:width 1s linear}
 
-  /* TITLE SCREEN */
-  #title-screen{background:var(--bg)}
-  .game-title{font-size:clamp(28px,5vw,64px);font-weight:700;letter-spacing:.15em;color:var(--accent);text-shadow:0 0 30px rgba(0,229,255,.4);margin-bottom:.3em}
-  .game-subtitle{font-size:14px;color:var(--text2);letter-spacing:.3em;margin-bottom:2.5em}
-  .btn{padding:12px 36px;border:2px solid var(--accent);background:transparent;color:var(--accent);font-family:'Space Mono',monospace;font-size:14px;letter-spacing:.15em;cursor:pointer;transition:all .2s;text-transform:uppercase}
-  .btn:hover{background:var(--accent);color:var(--bg)}
-  .btn-orange{border-color:var(--accent2);color:var(--accent2)}
-  .btn-orange:hover{background:var(--accent2);color:var(--bg)}
-  .btn-green{border-color:var(--accent3);color:var(--accent3)}
-  .btn-green:hover{background:var(--accent3);color:var(--bg)}
+/* ── TITLE ── */
+#s-title{align-items:center;justify-content:center}
+.game-title{font-size:clamp(28px,5vw,58px);font-weight:700;letter-spacing:.15em;color:var(--accent);text-shadow:0 0 28px rgba(0,229,255,.35);margin-bottom:.2em}
+.game-sub{font-size:12px;color:var(--text2);letter-spacing:.3em;margin-bottom:2.5em}
+.btn{padding:11px 32px;border:2px solid var(--accent);background:transparent;color:var(--accent);font-family:'Space Mono',monospace;font-size:13px;letter-spacing:.15em;cursor:pointer;transition:all .2s;text-transform:uppercase}
+.btn:hover{background:var(--accent);color:var(--bg)}
+.btn-g{border-color:var(--accent3);color:var(--accent3)}.btn-g:hover{background:var(--accent3);color:var(--bg)}
+.how-to{margin-top:20px;font-size:11px;color:var(--text2);max-width:340px;text-align:center;line-height:2}
 
-  /* GAME LAYOUT */
-  #game-screen{position:fixed;inset:0;display:flex;flex-direction:column;background:var(--bg)}
-  #game-screen.hidden{display:none}
+/* ══════════════════════════
+   SCREEN 1: ASSIGN
+══════════════════════════ */
+#s1-body{flex:1;display:flex;overflow:hidden;min-height:0}
+#lobby-panel{width:196px;flex-shrink:0;background:var(--surface);border-right:1px solid rgba(255,255,255,.07);display:flex;flex-direction:column;overflow:hidden}
+.panel-hdr{padding:9px 12px;font-size:10px;letter-spacing:.15em;color:var(--text2);border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
+#lobby-chars{flex:1;overflow-y:auto;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
+#lobby-chars::-webkit-scrollbar{width:4px}
+#lobby-chars::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
+.char-card{width:56px;height:70px;background:var(--surface2);border:2px solid rgba(255,255,255,.1);border-radius:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:4px;position:relative;transition:border-color .15s,transform .1s;flex-shrink:0;animation:cpop .18s ease-out}
+@keyframes cpop{from{transform:scale(0)}to{transform:scale(1)}}
+.char-card:hover{border-color:rgba(0,229,255,.5);transform:scale(1.05)}
+.char-card.sel{border-color:var(--accent);background:rgba(0,229,255,.08)}
+.char-card.wrong-wait{border-color:rgba(255,200,0,.6)!important}
+.floor-badge{position:absolute;top:4px;right:4px;font-size:10px;font-weight:700;background:var(--accent2);color:#fff;border-radius:3px;padding:1px 4px;line-height:1.4}
+.floor-badge.warn{background:#ffd600;color:#000}
+.char-body{font-size:26px;line-height:1}
+.char-nm{font-size:8px;color:var(--text2)}
+#lift-center{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+#lift-slots{display:flex;gap:1px;background:rgba(255,255,255,.04);flex-shrink:0;height:186px}
+.lift-slot{flex:1;background:var(--surface);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid rgba(255,255,255,.04)}
+.lift-slot:last-child{border-right:none}
+.lift-hdr{padding:7px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.07);flex-shrink:0}
+.lift-lbl{font-size:10px;font-weight:700;letter-spacing:.15em}
+.lift-range{font-size:9px;color:var(--text2)}
+.lift-cap{font-size:10px;color:var(--text2)}
+.lA .lift-lbl{color:var(--lA)}.lB .lift-lbl{color:var(--lB)}.lC .lift-lbl{color:var(--lC)}
+.lift-pass{flex:1;padding:6px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;overflow-y:auto;cursor:pointer}
+.lift-pass::-webkit-scrollbar{width:3px}
+.pass-chip{display:flex;align-items:center;gap:3px;background:var(--surface2);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;transition:background .12s}
+.pass-chip:hover{background:rgba(255,80,80,.15);border-color:rgba(255,80,80,.4)}
+.pass-chip .fn{color:var(--accent2);font-weight:700}
+.pass-chip.wrong{border-color:rgba(255,200,0,.45)!important;background:rgba(255,200,0,.07)!important}
+.pass-chip.wrong .fn{color:#ffd600!important}
+#lift-actions{padding:10px 12px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
+#send-btn{flex:1;padding:10px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.15em;background:var(--accent3);color:#0a0f1e;border:none;cursor:pointer;text-transform:uppercase;transition:opacity .2s}
+#send-btn:disabled{opacity:.28;cursor:not-allowed}
+#clear-btn{padding:10px 14px;font-family:'Space Mono',monospace;font-size:11px;background:transparent;color:var(--accent2);border:1px solid var(--accent2);cursor:pointer}
+#clear-btn:hover{background:rgba(255,107,53,.1)}
+.info-box{padding:9px 12px;font-size:10px;color:var(--text2);line-height:1.9;border-top:1px solid rgba(255,255,255,.04)}
+.info-box b{color:var(--accent)}
 
-  #topbar{display:flex;align-items:center;justify-content:space-between;padding:8px 16px;background:var(--surface);border-bottom:1px solid rgba(0,229,255,.2);flex-shrink:0;height:52px}
-  .topbar-title{font-size:13px;letter-spacing:.2em;color:var(--accent)}
-  #timer-display{font-size:22px;font-weight:700;color:var(--accent3);font-variant-numeric:tabular-nums}
-  #timer-display.urgent{color:#ff4444;animation:pulse .5s infinite alternate}
-  @keyframes pulse{from{opacity:1}to{opacity:.5}}
-  #phase-label{font-size:11px;letter-spacing:.15em;color:var(--text2)}
-  .score-box{font-size:11px;color:var(--text2);text-align:right}
-  .score-box span{color:var(--accent);font-weight:700}
+/* ══════════════════════════
+   SCREEN 2: CINEMATIC BUILDING
+══════════════════════════ */
+#s2-body{flex:1;display:flex;overflow:hidden;min-height:0}
 
-  #main-area{flex:1;display:flex;overflow:hidden;min-height:0}
+/* ── building panel (right side, full height) ── */
+#bld-panel{flex:1;position:relative;overflow:hidden;background:var(--surface)}
 
-  /* LOBBY */
-  #lobby-panel{width:220px;flex-shrink:0;background:var(--surface);border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden}
-  #lobby-title{padding:10px 12px;font-size:11px;letter-spacing:.15em;color:var(--text2);border-bottom:1px solid rgba(255,255,255,.08)}
-  #lobby-chars{flex:1;overflow-y:auto;padding:8px;display:flex;flex-wrap:wrap;gap:6px;align-content:flex-start}
-  #lobby-chars::-webkit-scrollbar{width:4px}
-  #lobby-chars::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
+/* floor rows — stacked bottom=FL1 */
+#bld-floors{position:absolute;inset:0;display:flex;flex-direction:column-reverse}
+.bld-row{display:flex;align-items:center;border-top:1px solid rgba(255,255,255,.06);position:relative;flex-shrink:0;height:var(--fh)}
+.bld-row.fl1{background:rgba(0,229,255,.04)}
+.bld-fl-num{width:28px;font-size:9px;color:rgba(255,255,255,.25);text-align:right;padding-right:6px;flex-shrink:0}
+.bld-fl-content{flex:1;height:100%;position:relative;display:flex;align-items:center;gap:3px;padding-left:4px;overflow:hidden}
 
-  /* CHAR CARD */
-  .char-card{width:58px;height:72px;background:var(--surface2);border:2px solid rgba(255,255,255,.1);border-radius:6px;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding-bottom:4px;position:relative;transition:border-color .15s,transform .1s;flex-shrink:0}
-  .char-card:hover{border-color:rgba(0,229,255,.5);transform:scale(1.05)}
-  .char-card.selected{border-color:var(--accent);background:rgba(0,229,255,.08)}
-  .char-card.assigned{opacity:.4;cursor:default;transform:none}
-  .char-card.delivered{opacity:.25;cursor:default}
-  .char-floor-badge{position:absolute;top:4px;right:4px;font-size:10px;font-weight:700;background:var(--accent2);color:#fff;border-radius:3px;padding:1px 4px;line-height:1.4}
-  .char-body{font-size:28px;line-height:1}
-  .char-name{font-size:8px;color:var(--text2);letter-spacing:.05em}
+/* delivered chars sitting on the floor */
+.delivered-char{font-size:18px;animation:charArrive .35s cubic-bezier(.34,1.56,.64,1)}
+@keyframes charArrive{from{transform:translateY(-16px) scale(0);opacity:0}to{transform:none;opacity:1}}
 
-  /* LIFT PANEL */
-  #lift-panel{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
-  #lift-slots{display:flex;gap:1px;background:rgba(255,255,255,.05);flex-shrink:0;height:180px}
-  .lift-slot{flex:1;background:var(--surface);display:flex;flex-direction:column;overflow:hidden;border-right:1px solid rgba(255,255,255,.05)}
-  .lift-slot:last-child{border-right:none}
-  .lift-header{padding:8px 10px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
-  .lift-name{font-size:10px;font-weight:700;letter-spacing:.15em}
-  .lift-floors-label{font-size:9px;color:var(--text2)}
-  .lift-capacity{font-size:10px;color:var(--text2)}
-  .lift1-color .lift-name{color:var(--lift1)}
-  .lift2-color .lift-name{color:var(--lift2)}
-  .lift3-color .lift-name{color:var(--lift3)}
-  .lift-passengers{flex:1;padding:6px;display:flex;flex-wrap:wrap;gap:4px;align-content:flex-start;overflow-y:auto}
-  .lift-passengers::-webkit-scrollbar{width:3px}
-  .lift-passengers::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
-  .pass-chip{display:flex;align-items:center;gap:3px;background:var(--surface2);border:1px solid rgba(255,255,255,.1);border-radius:4px;padding:2px 6px;font-size:10px;cursor:pointer;transition:background .15s}
-  .pass-chip:hover{background:rgba(255,80,80,.15);border-color:rgba(255,80,80,.4)}
-  .pass-chip span{font-size:12px}
-  .pass-chip .floor-num{color:var(--accent2);font-weight:700}
-  .wrong-floor-chip{border-color:rgba(255,200,0,.5) !important;background:rgba(255,200,0,.08) !important}
-  .wrong-floor-chip .floor-num{color:#ffd600 !important}
+/* lift shaft columns */
+#lift-shafts{position:absolute;top:0;right:0;bottom:0;display:flex;pointer-events:none}
+.shaft-col{width:52px;position:relative;border-left:1px solid rgba(255,255,255,.06)}
 
-  #lift-actions{padding:10px 12px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.08);flex-shrink:0}
-  #confirm-btn{flex:1;padding:10px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.15em;background:var(--accent3);color:#0a0f1e;border:none;cursor:pointer;text-transform:uppercase;transition:opacity .2s}
-  #confirm-btn:disabled{opacity:.3;cursor:not-allowed}
-  #clear-btn{padding:10px 16px;font-family:'Space Mono',monospace;font-size:11px;background:transparent;color:var(--accent2);border:1px solid var(--accent2);cursor:pointer}
-  #clear-btn:hover{background:rgba(255,107,53,.1)}
+/* lift car */
+.lcar{position:absolute;left:4px;right:4px;border-radius:5px;border:2px solid;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;padding:3px 2px;z-index:5;overflow:hidden}
+.lcar.lA{border-color:var(--lA);background:rgba(30,136,229,.22)}
+.lcar.lB{border-color:var(--lB);background:rgba(123,31,162,.22)}
+.lcar.lC{border-color:var(--lC);background:rgba(230,81,0,.22)}
+.lcar.door-open{box-shadow:0 0 12px currentColor}
+.lcar-lbl{font-size:8px;font-weight:700;letter-spacing:.1em}
+.lcar.lA .lcar-lbl{color:var(--lA)}.lcar.lB .lcar-lbl{color:var(--lB)}.lcar.lC .lcar-lbl{color:var(--lC)}
+.lcar-pax{font-size:11px;display:flex;flex-wrap:wrap;justify-content:center;gap:1px;line-height:1}
 
-  /* BUILDING VIEW */
-  #building-panel{width:260px;flex-shrink:0;background:var(--surface);border-left:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;overflow:hidden}
-  #building-title{padding:10px 12px;font-size:11px;letter-spacing:.15em;color:var(--text2);border-bottom:1px solid rgba(255,255,255,.08);flex-shrink:0}
-  #building-wrap{flex:1;overflow-y:auto;position:relative;padding:8px}
-  #building-wrap::-webkit-scrollbar{width:4px}
-  #building-wrap::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1)}
-  #building-floors{display:flex;flex-direction:column-reverse;gap:1px;position:relative}
-  .floor-row{display:flex;align-items:center;gap:6px;height:var(--floor-h);padding:0 4px;border-bottom:1px solid rgba(255,255,255,.04)}
-  .floor-num-label{width:24px;font-size:9px;color:var(--text2);text-align:right;flex-shrink:0}
-  .floor-bar-area{flex:1;position:relative;height:20px;background:rgba(255,255,255,.03);border-radius:2px;overflow:hidden;display:flex;align-items:center;gap:2px;padding:0 4px}
-  .floor-delivered-char{font-size:12px}
-  .lift-car{position:absolute;right:4px;width:18px;height:18px;border-radius:3px;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;color:#fff;transition:top .5s}
-  .lift-car-1{background:var(--lift1)}
-  .lift-car-2{background:var(--lift2)}
-  .lift-car-3{background:var(--lift3)}
-  .floor-row.active-floor{background:rgba(0,229,255,.05)}
+/* floor stop indicator dot */
+.shaft-dot{position:absolute;left:50%;transform:translateX(-50%);width:5px;height:5px;border-radius:50%;background:rgba(255,255,255,.12)}
+.shaft-dot.lit{background:var(--accent3);box-shadow:0 0 5px var(--accent3)}
 
-  /* RESULT OVERLAY */
-  #result-overlay{position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:200;display:flex;align-items:center;justify-content:center}
-  #result-overlay.hidden{display:none}
-  .result-box{background:var(--surface);border:1px solid rgba(0,229,255,.3);padding:32px 40px;text-align:center;max-width:420px;width:90%}
-  .result-title{font-size:28px;font-weight:700;margin-bottom:8px}
-  .result-sub{font-size:13px;color:var(--text2);margin-bottom:24px;line-height:1.8}
-  .result-stat{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08);font-size:13px}
-  .result-stat:last-of-type{border-bottom:none}
-  .result-val{color:var(--accent);font-weight:700}
+/* lift range bracket */
+.shaft-range{position:absolute;left:2px;width:3px;border-radius:2px;opacity:.35}
+.shaft-range.lA{background:var(--lA)}.shaft-range.lB{background:var(--lB)}.shaft-range.lC{background:var(--lC)}
 
-  /* MESSAGES */
-  #msg-bar{position:fixed;bottom:16px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid rgba(0,229,255,.3);padding:8px 20px;font-size:12px;letter-spacing:.1em;color:var(--accent);z-index:300;pointer-events:none;opacity:0;transition:opacity .3s}
-  #msg-bar.show{opacity:1}
+/* ── bottom bar ── */
+#s2-bar{padding:9px 14px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface)}
+#s2-bar-msg{font-size:11px;color:var(--text2)}
+#s2-bar-msg b{color:var(--accent)}
+#s2-back-btn{padding:8px 18px;font-family:'Space Mono',monospace;font-size:11px;letter-spacing:.1em;background:var(--accent3);color:#0a0f1e;border:none;cursor:pointer;text-transform:uppercase;display:none}
 
-  .lift-slot-drop{background:rgba(0,229,255,.05) !important;border:1px dashed rgba(0,229,255,.4) !important}
+/* ── END OVERLAY ── */
+#end-overlay{position:fixed;inset:0;background:rgba(0,0,0,.82);z-index:999;display:flex;align-items:center;justify-content:center}
+#end-overlay.hidden{display:none}
+.end-box{background:var(--surface);border:1px solid rgba(0,229,255,.25);padding:30px 38px;text-align:center;max-width:400px;width:90%}
+.end-title{font-size:24px;font-weight:700;margin-bottom:6px}
+.end-sub{font-size:11px;color:var(--text2);margin-bottom:18px;line-height:1.9}
+.end-stat{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.07);font-size:11px}
+.end-stat:last-of-type{border-bottom:none}
+.end-val{color:var(--accent);font-weight:700}
+.end-btns{margin-top:20px;display:flex;gap:10px;justify-content:center}
 
-  .progress-bar-wrap{height:3px;background:rgba(255,255,255,.1);flex-shrink:0}
-  #progress-bar{height:100%;background:var(--accent3);transition:width 1s linear;width:100%}
-
-  /* Animations */
-  @keyframes charPop{0%{transform:scale(0)}100%{transform:scale(1)}}
-  .char-card{animation:charPop .2s ease-out}
-  @keyframes floorFlash{0%,100%{background:transparent}50%{background:rgba(0,229,255,.15)}}
-  .floor-flash{animation:floorFlash .4s ease}
-
-  #tutorial{position:fixed;bottom:60px;right:16px;background:var(--surface2);border:1px solid rgba(255,255,255,.1);padding:12px 16px;font-size:11px;color:var(--text2);z-index:50;line-height:1.8;border-radius:4px}
-  #tutorial strong{color:var(--accent)}
+/* ── TOAST ── */
+#toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:var(--surface2);border:1px solid rgba(0,229,255,.25);padding:6px 16px;font-size:11px;color:var(--accent);z-index:800;pointer-events:none;opacity:0;transition:opacity .25s;white-space:nowrap}
+#toast.show{opacity:1}
 </style>
 </head>
 <body>
 
 <!-- TITLE -->
-<div id="title-screen" class="screen">
+<div id="s-title" class="screen">
   <div class="game-title">LIFT ELEVATOR</div>
-  <div class="game-subtitle">TIME MANAGEMENT PUZZLE</div>
-  <button class="btn" onclick="startGame()">START GAME</button>
-  <div style="margin-top:16px;font-size:11px;color:var(--text2);max-width:340px;text-align:center;line-height:1.8">
-    คลิกตัวละครในห้องโถง แล้วคลิกลิฟต์เพื่อส่งตัวละครเข้าลิฟต์<br>
-    กดยืนยันเพื่อให้ลิฟต์เคลื่อนที่ขึ้น<br>
-    ส่งทุกคนถึงชั้นของตัวเองภายใน 1 นาที!
-  </div>
+  <div class="game-sub">TIME MANAGEMENT PUZZLE</div>
+  <button class="btn" onclick="startGame()">▶ START GAME</button>
+  <div class="how-to">คลิกตัวละคร → คลิกลิฟต์ → กด SEND LIFTS<br>ส่งพนักงานทุกคนถึงชั้นตัวเองภายใน <b style="color:var(--accent3)">1 นาที</b></div>
 </div>
 
-<!-- GAME -->
-<div id="game-screen" class="hidden">
-  <div id="topbar">
+<!-- SCREEN 1 -->
+<div id="s1" class="screen hidden">
+  <div class="topbar">
     <div class="topbar-title">🏢 LIFT ELEVATOR</div>
-    <div style="display:flex;flex-direction:column;align-items:center">
-      <div id="timer-display">60</div>
-      <div id="phase-label">ASSIGN PHASE</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+      <div class="timer" id="s1-timer">1:00</div>
+      <div class="phase-lbl">ASSIGN PHASE</div>
     </div>
-    <div class="score-box">
-      Delivered: <span id="delivered-count">0</span> / <span id="total-count">0</span>
-    </div>
+    <div class="score">Delivered <b id="s1-del">0</b> / <b id="s1-tot">0</b></div>
   </div>
-  <div class="progress-bar-wrap"><div id="progress-bar"></div></div>
-
-  <div id="main-area">
-    <!-- LOBBY -->
+  <div class="pbar-wrap"><div class="pbar" id="pbar1"></div></div>
+  <div id="s1-body">
     <div id="lobby-panel">
-      <div id="lobby-title">🚶 LOBBY — ชั้น 1</div>
+      <div class="panel-hdr">🚶 LOBBY — FL 1</div>
       <div id="lobby-chars"></div>
     </div>
-
-    <!-- CENTER: LIFTS + ACTIONS -->
-    <div id="lift-panel">
+    <div id="lift-center">
       <div id="lift-slots">
-        <div class="lift-slot lift1-color" id="lift-slot-0">
-          <div class="lift-header">
-            <div>
-              <div class="lift-name">LIFT A</div>
-              <div class="lift-floors-label" id="lift-floors-0">FL 2–8</div>
-            </div>
-            <div class="lift-capacity" id="lift-cap-0">0/10</div>
-          </div>
-          <div class="lift-passengers" id="lift-pass-0" onclick="handleLiftClick(0)"></div>
+        <div class="lift-slot lA">
+          <div class="lift-hdr"><div><div class="lift-lbl">LIFT A</div><div class="lift-range" id="lr-0"></div></div><div class="lift-cap" id="lc-0">0/10</div></div>
+          <div class="lift-pass" id="lp-0" onclick="liftClick(0)"></div>
         </div>
-        <div class="lift-slot lift2-color" id="lift-slot-1">
-          <div class="lift-header">
-            <div>
-              <div class="lift-name">LIFT B</div>
-              <div class="lift-floors-label" id="lift-floors-1">FL 8–14</div>
-            </div>
-            <div class="lift-capacity" id="lift-cap-1">0/10</div>
-          </div>
-          <div class="lift-passengers" id="lift-pass-1" onclick="handleLiftClick(1)"></div>
+        <div class="lift-slot lB">
+          <div class="lift-hdr"><div><div class="lift-lbl">LIFT B</div><div class="lift-range" id="lr-1"></div></div><div class="lift-cap" id="lc-1">0/10</div></div>
+          <div class="lift-pass" id="lp-1" onclick="liftClick(1)"></div>
         </div>
-        <div class="lift-slot lift3-color" id="lift-slot-2">
-          <div class="lift-header">
-            <div>
-              <div class="lift-name">LIFT C</div>
-              <div class="lift-floors-label" id="lift-floors-2">FL 14–20</div>
-            </div>
-            <div class="lift-capacity" id="lift-cap-2">0/10</div>
-          </div>
-          <div class="lift-passengers" id="lift-pass-2" onclick="handleLiftClick(2)"></div>
+        <div class="lift-slot lC">
+          <div class="lift-hdr"><div><div class="lift-lbl">LIFT C</div><div class="lift-range" id="lr-2"></div></div><div class="lift-cap" id="lc-2">0/10</div></div>
+          <div class="lift-pass" id="lp-2" onclick="liftClick(2)"></div>
         </div>
       </div>
       <div id="lift-actions">
-        <button id="confirm-btn" onclick="confirmLifts()" disabled>▶ SEND LIFTS</button>
-        <button id="clear-btn" onclick="clearAssignments()">✕ CLEAR</button>
+        <button id="send-btn" onclick="sendLifts()" disabled>▶ SEND LIFTS</button>
+        <button id="clear-btn" onclick="clearAll()">✕ CLEAR</button>
       </div>
-      <!-- INFO BOX -->
-      <div style="padding:10px 12px;font-size:10px;color:var(--text2);line-height:1.9;border-top:1px solid rgba(255,255,255,.05)">
-        <strong style="color:var(--accent)">How to assign:</strong> คลิกตัวละครในห้องโถง → คลิก LIFT ที่ต้องการ<br>
-        <strong style="color:var(--accent3)">⚠ Wrong floor:</strong> ตัวละครที่อยู่นอกช่วงชั้นของลิฟต์ จะกลับมาหลังลิฟต์ส่งคนอื่นครบ<br>
-        <strong style="color:var(--accent2)">Capacity:</strong> ลิฟต์ละ 10 คน | เวลา 1 วินาที/ชั้น | หยุด 0.5 วินาที/ชั้น | ตึก 8 ชั้น
-      </div>
-    </div>
-
-    <!-- BUILDING VIEW -->
-    <div id="building-panel">
-      <div id="building-title">🏙 BUILDING VIEW</div>
-      <div id="building-wrap">
-        <div id="building-floors"></div>
+      <div class="info-box">
+        <b>Assign:</b> คลิกตัวละคร → คลิกลิฟต์ | คลิก chip เพื่อเอาออก<br>
+        <b>⚠ Wrong floor:</b> ลิฟต์ขึ้นสุด แล้วพาคนผิดชั้นกลับ FL1<br>
+        <b>Speed:</b> 1s/ชั้น | หยุดส่งคน 0.5s/ชั้น
       </div>
     </div>
   </div>
 </div>
 
-<!-- RESULT -->
-<div id="result-overlay" class="hidden">
-  <div class="result-box">
-    <div class="result-title" id="result-title">MISSION COMPLETE</div>
-    <div class="result-sub" id="result-sub">ส่งพนักงานถึงที่หมายครบทุกคน!</div>
-    <div id="result-stats"></div>
-    <div style="margin-top:24px;display:flex;gap:12px;justify-content:center">
-      <button class="btn btn-green" onclick="startGame()">PLAY AGAIN</button>
+<!-- SCREEN 2 -->
+<div id="s2" class="screen hidden">
+  <div class="topbar">
+    <div class="topbar-title">🏢 LIFT ELEVATOR</div>
+    <div style="display:flex;flex-direction:column;align-items:center;gap:1px">
+      <div class="timer" id="s2-timer">1:00</div>
+      <div class="phase-lbl" id="s2-phase">LIFT MOVING</div>
+    </div>
+    <div class="score">Delivered <b id="s2-del">0</b> / <b id="s2-tot">0</b></div>
+  </div>
+  <div class="pbar-wrap"><div class="pbar" id="pbar2"></div></div>
+  <div id="s2-body">
+    <!-- building view -->
+    <div id="bld-panel">
+      <div id="bld-floors"><!-- floor rows injected by JS --></div>
+      <div id="lift-shafts"><!-- shaft cols injected by JS --></div>
+    </div>
+
+  </div>
+  <div id="s2-bar">
+    <div id="s2-bar-msg">ลิฟต์กำลังเคลื่อนที่...</div>
+    <button id="s2-back-btn" onclick="goBackToAssign()">◀ ASSIGN</button>
+  </div>
+</div>
+
+<!-- END OVERLAY -->
+<div id="end-overlay" class="hidden">
+  <div class="end-box">
+    <div class="end-title" id="end-title"></div>
+    <div class="end-sub" id="end-sub"></div>
+    <div id="end-stats"></div>
+    <div class="end-btns">
+      <button class="btn btn-g" onclick="startGame()">PLAY AGAIN</button>
       <button class="btn" onclick="showTitle()">MAIN MENU</button>
     </div>
   </div>
 </div>
-
-<div id="msg-bar">message</div>
+<div id="toast"></div>
 
 <script>
+// ══ CONSTANTS ══
 const TOTAL_FLOORS = 8;
-const TOTAL_CHARS = 10;
-const GAME_TIME = 60;
-const MAX_CAPACITY = 10;
-const TRAVEL_TIME = 1000; // ms per floor
-const STOP_TIME = 500; // ms per stop
+const TOTAL_CHARS  = 10;
+const GAME_TIME    = 60;
+const MAX_CAP      = 10;
+const MS_PER_FLOOR = 1000; // travel time per floor
+const MS_STOP      = 500;  // door open time per stop
 
-// LIFT_CONFIG generated randomly each game via genLiftConfig()
-let LIFT_CONFIG = [];
+// ══ STATE ══
+let CFG=[], chars=[], passengers=[[],[],[]], selChar=null;
+let gTimer=null, timeLeft=GAME_TIME, delivered=0, phase='assign';
 
-const CHAR_EMOJIS_M = ['👨‍💼','👨‍💻','🧑‍💼','👨‍🔬','👨‍🏫','👨‍⚕️','👨‍🍳','🧑‍💻'];
-const CHAR_EMOJIS_F = ['👩‍💼','👩‍💻','🧑‍💼','👩‍🔬','👩‍🏫','👩‍⚕️','👩‍🍳','👸'];
+// ══ UTILS ══
+const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const delay=ms=>new Promise(r=>setTimeout(r,ms));
+const fmtT=s=>`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
 
-let characters = [];
-let liftPassengers = [[],[],[]];
-let selectedChar = null;
-let gameTimer = null;
-let timeLeft = GAME_TIME;
-let deliveredCount = 0;
-let phase = 'assign'; // assign | animating | result
-let liftPositions = [1,1,1]; // current floor of each lift
-let animRunning = false;
-
-function genLiftConfig(){
-  // Randomly split FL2-8 (7 floors) across 3 lifts, guaranteed full coverage, with possible overlap
-  // Strategy: pick 2 random split points within 2-8, sort them, assign ranges
-  const allFloors = [2,3,4,5,6,7,8];
-  // shuffle and split into 3 groups ensuring each gets at least 1 unique floor
-  // pick 2 cut points from indices 1-6 (leaving at least 1 on each side)
-  let c1 = rand(2,4); // split1 is the max of lift A
-  let c2 = rand(c1+1,7); // split2 is the max of lift B (lift C goes to 8)
-  // Add overlap: lift B starts at c1 (shared), lift C starts at c2 (shared)
-  return [
-    {min:2,   max:c1,  color:'#1e88e5', label:'A'},
-    {min:c1,  max:c2,  color:'#7b1fa2', label:'B'},
-    {min:c2,  max:8,   color:'#e65100', label:'C'},
+function genCFG(){
+  const c1=rand(2,4), c2=rand(c1+1,7);
+  return[
+    {min:2,max:c1,label:'A',cls:'lA',color:'var(--lA)'},
+    {min:c1,max:c2,label:'B',cls:'lB',color:'var(--lB)'},
+    {min:c2,max:8, label:'C',cls:'lC',color:'var(--lC)'},
   ];
 }
-
-function rand(a,b){return Math.floor(Math.random()*(b-a+1))+a}
-function shuffle(arr){for(let i=arr.length-1;i>0;i--){const j=rand(0,i);[arr[i],arr[j]]=[arr[j],arr[i]]}return arr}
-
-function genCharacters(){
-  // Each char gets a random floor 2-8, duplicates allowed
-  const chars=[];
-  for(let i=0;i<TOTAL_CHARS;i++){
-    const isFemale = i%2===0;
-    const emojis = isFemale?CHAR_EMOJIS_F:CHAR_EMOJIS_M;
-    chars.push({
-      id:i,
-      floor:rand(2, TOTAL_FLOORS),
-      emoji:emojis[rand(0,emojis.length-1)],
-      name:`E${String(i+1).padStart(2,'0')}`,
-      delivered:false,
-      inLift:-1,
-      waiting:false
-    });
-  }
-  return chars;
+const EM_M=['👨‍💼','👨‍💻','🧑‍💼','👨‍🔬','👨‍🏫','👨‍⚕️'];
+const EM_F=['👩‍💼','👩‍💻','🧑‍💼','👩‍🔬','👩‍🏫','👩‍⚕️'];
+function genChars(){
+  return Array.from({length:TOTAL_CHARS},(_,i)=>({
+    id:i, floor:rand(2,TOTAL_FLOORS),
+    emoji:(i%2?EM_M:EM_F)[rand(0,5)],
+    name:`E${String(i+1).padStart(2,'0')}`,
+    delivered:false, inLift:-1, waiting:false
+  }));
 }
 
+// ══ SCREEN ══
+function showScreen(id){
+  ['s-title','s1','s2'].forEach(sid=>{
+    const el=document.getElementById(sid);
+    el.classList.remove('hidden','out-left','out-right');
+    if(sid!==id){
+      el.classList.add(sid<id?'out-left':'out-right');
+      setTimeout(()=>el.classList.add('hidden'),340);
+    }
+  });
+}
+function showTitle(){
+  clearInterval(gTimer);
+  document.getElementById('end-overlay').classList.add('hidden');
+  showScreen('s-title');
+}
+
+// ══ START ══
 function startGame(){
-  LIFT_CONFIG = genLiftConfig();
-  characters = genCharacters();
-  liftPassengers = [[],[],[]];
-  selectedChar = null;
-  timeLeft = GAME_TIME;
-  deliveredCount = 0;
-  phase = 'assign';
-  liftPositions = [1,1,1];
-  animRunning = false;
-
-  document.getElementById('title-screen').classList.add('hidden');
-  document.getElementById('result-overlay').classList.add('hidden');
-  document.getElementById('game-screen').classList.remove('hidden');
-  document.getElementById('total-count').textContent = TOTAL_CHARS;
-  document.getElementById('delivered-count').textContent = 0;
-  document.getElementById('phase-label').textContent = 'ASSIGN PHASE';
-  document.getElementById('timer-display').classList.remove('urgent');
-  document.getElementById('timer-display').textContent='1:00';
-  document.getElementById('progress-bar').style.width='100%';
-
-  renderLobby();
-  renderLifts();
-  buildFloors();
-  updateConfirmBtn();
-
-  if(gameTimer) clearInterval(gameTimer);
-  gameTimer = setInterval(tickTimer, 1000);
+  CFG=genCFG(); chars=genChars(); passengers=[[],[],[]]; selChar=null;
+  timeLeft=GAME_TIME; delivered=0; phase='assign';
+  document.getElementById('end-overlay').classList.add('hidden');
+  ['s1-del','s2-del'].forEach(id=>document.getElementById(id).textContent=0);
+  ['s1-tot','s2-tot'].forEach(id=>document.getElementById(id).textContent=TOTAL_CHARS);
+  CFG.forEach((c,i)=>document.getElementById(`lr-${i}`).textContent=`FL ${c.min}–${c.max}`);
+  showScreen('s1');
+  renderLobby(); renderLifts(); updateSendBtn();
+  ['s1-timer','s2-timer'].forEach(id=>{document.getElementById(id).textContent='1:00';document.getElementById(id).classList.remove('urgent');});
+  ['pbar1','pbar2'].forEach(id=>document.getElementById(id).style.width='100%');
+  clearInterval(gTimer);
+  gTimer=setInterval(tick,1000);
 }
 
-function tickTimer(){
-  if(phase==='result') return;
+// ══ TIMER ══
+function tick(){
+  if(phase==='end')return;
   timeLeft--;
-  updateTimerDisplay();
-  if(timeLeft<=0){
-    clearInterval(gameTimer);
-    gameOver('หมดเวลา! ยังส่งพนักงานไม่ครบ');
-  }
+  const txt=fmtT(timeLeft), urg=timeLeft<=15;
+  ['s1-timer','s2-timer'].forEach(id=>{document.getElementById(id).textContent=txt;document.getElementById(id).classList.toggle('urgent',urg);});
+  ['pbar1','pbar2'].forEach(id=>document.getElementById(id).style.width=(timeLeft/GAME_TIME*100)+'%');
+  // only fire game over during assign phase — animating phase will check after animation finishes
+  if(timeLeft<=0 && phase==='assign'){clearInterval(gTimer);triggerEnd(false,'หมดเวลา!');}
 }
 
-function updateTimerDisplay(){
-  const el=document.getElementById('timer-display');
-  const m=Math.floor(timeLeft/60);
-  const s=timeLeft%60;
-  el.textContent=`${m}:${String(s).padStart(2,'0')}`;
-  el.classList.toggle('urgent',timeLeft<=30);
-  document.getElementById('progress-bar').style.width=(timeLeft/GAME_TIME*100)+'%';
-}
-
+// ══ SCREEN 1 ══
 function renderLobby(){
-  const el=document.getElementById('lobby-chars');
-  el.innerHTML='';
-  characters.forEach(c=>{
-    if(c.delivered) return;
-    if(c.inLift>=0) return;
-    if(c.waiting) return; // waiting = returned from wrong lift, will be shown
-    const div=document.createElement('div');
-    div.className='char-card'+(selectedChar===c.id?' selected':'');
-    div.dataset.id=c.id;
-    div.innerHTML=`<div class="char-floor-badge">${c.floor}</div><div class="char-body">${c.emoji}</div><div class="char-name">${c.name}</div>`;
-    div.onclick=()=>selectChar(c.id);
-    el.appendChild(div);
-  });
-  // also show waiting chars
-  characters.forEach(c=>{
-    if(c.waiting&&!c.delivered&&c.inLift<0){
-      const div=document.createElement('div');
-      div.className='char-card'+(selectedChar===c.id?' selected':'');
-      div.dataset.id=c.id;
-      div.style.borderColor='rgba(255,200,0,.6)';
-      div.innerHTML=`<div class="char-floor-badge" style="background:#ffd600;color:#000">${c.floor}</div><div class="char-body">${c.emoji}</div><div class="char-name">${c.name}</div>`;
-      div.onclick=()=>selectChar(c.id);
-      el.appendChild(div);
-    }
+  const el=document.getElementById('lobby-chars'); el.innerHTML='';
+  chars.forEach(c=>{
+    if(c.delivered||c.inLift>=0)return;
+    const d=document.createElement('div');
+    d.className='char-card'+(selChar===c.id?' sel':'')+(c.waiting?' wrong-wait':'');
+    d.innerHTML=`<div class="floor-badge${c.waiting?' warn':''}">${c.floor}</div><div class="char-body">${c.emoji}</div><div class="char-nm">${c.name}</div>`;
+    d.onclick=()=>pickChar(c.id); el.appendChild(d);
   });
 }
-
 function renderLifts(){
-  for(let li=0;li<3;li++){
-    const pEl=document.getElementById(`lift-pass-${li}`);
-    pEl.innerHTML='';
-    const cfg=LIFT_CONFIG[li];
-    document.getElementById(`lift-floors-${li}`).textContent=`FL ${cfg.min}–${cfg.max}`;
-    document.getElementById(`lift-cap-${li}`).textContent=`${liftPassengers[li].length}/10`;
-    liftPassengers[li].forEach(cid=>{
-      const c=characters.find(x=>x.id===cid);
-      if(!c) return;
-      const isWrong = c.floor<cfg.min||c.floor>cfg.max;
+  for(let i=0;i<3;i++){
+    const p=document.getElementById(`lp-${i}`); p.innerHTML='';
+    document.getElementById(`lc-${i}`).textContent=`${passengers[i].length}/10`;
+    passengers[i].forEach(cid=>{
+      const c=chars.find(x=>x.id===cid); if(!c)return;
+      const wrong=c.floor<CFG[i].min||c.floor>CFG[i].max;
       const chip=document.createElement('div');
-      chip.className='pass-chip'+(isWrong?' wrong-floor-chip':'');
-      chip.title='คลิกเพื่อเอาออก';
-      chip.innerHTML=`<span>${c.emoji}</span><span class="floor-num">${c.floor}</span>`;
-      chip.onclick=(e)=>{e.stopPropagation();removeFromLift(cid,li)};
-      pEl.appendChild(chip);
+      chip.className='pass-chip'+(wrong?' wrong':'');
+      chip.innerHTML=`<span>${c.emoji}</span><span class="fn">${c.floor}</span>`;
+      chip.onclick=e=>{e.stopPropagation();removePax(cid,i)}; p.appendChild(chip);
     });
   }
-  updateConfirmBtn();
+  updateSendBtn();
+}
+function pickChar(id){
+  if(phase!=='assign')return;
+  const c=chars.find(x=>x.id===id);
+  if(!c||c.delivered||c.inLift>=0)return;
+  selChar=(selChar===id)?null:id; renderLobby();
+  if(selChar!==null)toast(`${c.emoji} FL${c.floor} → คลิกลิฟต์`);
+}
+function liftClick(i){
+  if(phase!=='assign')return;
+  if(selChar===null){toast('กรุณาเลือกตัวละครก่อน');return;}
+  if(passengers[i].length>=MAX_CAP){toast(`LIFT ${CFG[i].label} เต็ม`);return;}
+  const c=chars.find(x=>x.id===selChar); if(!c)return;
+  c.inLift=i; c.waiting=false; passengers[i].push(selChar); selChar=null;
+  renderLobby(); renderLifts();
+}
+function removePax(cid,i){
+  if(phase!=='assign')return;
+  passengers[i]=passengers[i].filter(x=>x!==cid);
+  const c=chars.find(x=>x.id===cid); if(c){c.inLift=-1;c.waiting=false;}
+  renderLobby(); renderLifts();
+}
+function clearAll(){
+  if(phase!=='assign')return;
+  passengers.forEach(p=>p.forEach(cid=>{const c=chars.find(x=>x.id===cid);if(c){c.inLift=-1;c.waiting=false;}}));
+  passengers=[[],[],[]]; selChar=null; renderLobby(); renderLifts();
+}
+function updateSendBtn(){
+  document.getElementById('send-btn').disabled=(passengers.reduce((s,a)=>s+a.length,0)===0||phase!=='assign');
 }
 
-function selectChar(id){
-  if(phase!=='assign') return;
-  const c=characters.find(x=>x.id===id);
-  if(!c||c.delivered||c.inLift>=0) return;
-  selectedChar = (selectedChar===id)?null:id;
-  renderLobby();
-  if(selectedChar!==null) showMsg(`เลือก ${c.emoji} FL${c.floor} → คลิกลิฟต์ที่ต้องการ`);
-}
-
-function handleLiftClick(li){
-  if(phase!=='assign') return;
-  if(selectedChar===null){showMsg('กรุณาเลือกตัวละครก่อน');return;}
-  if(liftPassengers[li].length>=MAX_CAPACITY){showMsg(`LIFT ${LIFT_CONFIG[li].label} เต็มแล้ว (10/10)`);return;}
-  const c=characters.find(x=>x.id===selectedChar);
-  if(!c) return;
-  c.inLift=li;
-  c.waiting=false;
-  liftPassengers[li].push(selectedChar);
-  selectedChar=null;
-  renderLobby();
-  renderLifts();
-  showMsg(`${c.emoji} FL${c.floor} → LIFT ${LIFT_CONFIG[li].label}`);
-}
-
-function removeFromLift(cid, li){
-  if(phase!=='assign') return;
-  liftPassengers[li]=liftPassengers[li].filter(x=>x!==cid);
-  const c=characters.find(x=>x.id===cid);
-  if(c){c.inLift=-1;c.waiting=false;}
-  renderLobby();
-  renderLifts();
-}
-
-function clearAssignments(){
-  if(phase!=='assign') return;
-  liftPassengers.forEach((pass,li)=>{
-    pass.forEach(cid=>{
-      const c=characters.find(x=>x.id===cid);
-      if(c){c.inLift=-1;c.waiting=false;}
-    });
-  });
-  liftPassengers=[[],[],[]];
-  selectedChar=null;
-  renderLobby();
-  renderLifts();
-}
-
-function updateConfirmBtn(){
-  const total=liftPassengers.reduce((s,a)=>s+a.length,0);
-  document.getElementById('confirm-btn').disabled=(total===0||phase!=='assign');
-}
-
-function confirmLifts(){
-  if(phase!=='assign') return;
-  const total=liftPassengers.reduce((s,a)=>s+a.length,0);
-  if(total===0){showMsg('ยังไม่มีตัวละครในลิฟต์');return;}
+// ══ SEND → SCREEN 2 ══
+function sendLifts(){
+  if(phase!=='assign')return;
+  if(passengers.reduce((s,a)=>s+a.length,0)===0){toast('ยังไม่มีตัวละครในลิฟต์');return;}
   phase='animating';
-  document.getElementById('phase-label').textContent='LIFT MOVING...';
-  document.getElementById('confirm-btn').disabled=true;
-  document.getElementById('clear-btn').disabled=true;
-  runLiftAnimation();
+  document.getElementById('s2-del').textContent=delivered;
+  document.getElementById('s2-back-btn').style.display='none';
+  document.getElementById('s2-bar-msg').textContent='ลิฟต์กำลังเคลื่อนที่...';
+  document.getElementById('s2-phase').textContent='LIFT MOVING';
+  showScreen('s2');
+  // small delay so screen transition finishes before we measure DOM
+  setTimeout(()=>{buildBldView(); runAnim();}, 360);
 }
 
-async function runLiftAnimation(){
-  // For each lift run independently
-  const promises = [];
-  for(let li=0;li<3;li++){
-    if(liftPassengers[li].length>0){
-      promises.push(animateLift(li));
-    }
-  }
-  await Promise.all(promises);
-  // After all lifts done
-  afterAnimation();
-}
+// ══════════════════════════════════════
+//   BUILDING VIEW BUILDER
+// ══════════════════════════════════════
+let FH=0; // floor height px, set after DOM ready
 
-async function animateLift(li){
-  const cfg=LIFT_CONFIG[li];
-  const pass=[...liftPassengers[li]];
+function buildBldView(){
+  const bldPanel=document.getElementById('bld-panel');
+  FH = bldPanel.clientHeight / TOTAL_FLOORS;
 
-  // Separate into correct and wrong
-  const correct=pass.filter(cid=>{const c=characters.find(x=>x.id===cid);return c&&c.floor>=cfg.min&&c.floor<=cfg.max});
-  const wrong=pass.filter(cid=>!correct.includes(cid));
-
-  // Build stop list (sorted ascending) from correct passengers
-  const stops=[...new Set(correct.map(cid=>{const c=characters.find(x=>x.id===cid);return c.floor}))].sort((a,b)=>a-b);
-
-  // If only wrong passengers, lift must travel to cfg.max before returning
-  const topFloor = stops.length > 0 ? stops[stops.length-1] : cfg.max;
-
-  // Travel up, stopping at correct floors
-  let currentFloor=1;
-
-  if(stops.length > 0){
-    for(const stop of stops){
-      const floorsToTravel=Math.abs(stop-currentFloor);
-      await travelFloors(li,currentFloor,stop,TRAVEL_TIME*floorsToTravel);
-      currentFloor=stop;
-      // Drop off chars at this floor
-      const dropping=correct.filter(cid=>{const c=characters.find(x=>x.id===cid);return c&&c.floor===stop});
-      for(const cid of dropping){
-        const c=characters.find(x=>x.id===cid);
-        if(c){c.delivered=true;c.inLift=-1;deliveredCount++;}
-      }
-      flashFloor(stop);
-      renderBuildingFloor(stop);
-      document.getElementById('delivered-count').textContent=deliveredCount;
-      await delay(STOP_TIME);
-    }
-  } else {
-    // No correct passengers — travel to top of this lift's range
-    await travelFloors(li,currentFloor,cfg.max,TRAVEL_TIME*cfg.max);
-    currentFloor=cfg.max;
-    await delay(STOP_TIME);
-  }
-
-  // Return to floor 1
-  if(currentFloor>1){
-    await travelFloors(li,currentFloor,1,TRAVEL_TIME*currentFloor);
-  }
-
-  // Release wrong-floor passengers back to lobby
-  for(const cid of wrong){
-    const c=characters.find(x=>x.id===cid);
-    if(c){c.inLift=-1;c.waiting=true;}
-  }
-  liftPassengers[li]=[];
-}
-
-function travelFloors(li,from,to,ms){
-  return new Promise(resolve=>{
-    const start=Date.now();
-    const diff=to-from;
-    function step(){
-      const elapsed=Date.now()-start;
-      const t=Math.min(elapsed/ms,1);
-      const floor=from+diff*t;
-      liftPositions[li]=floor;
-      updateLiftCarPosition(li,floor);
-      if(t<1) requestAnimationFrame(step);
-      else{liftPositions[li]=to;updateLiftCarPosition(li,to);resolve();}
-    }
-    requestAnimationFrame(step);
-  });
-}
-
-function delay(ms){return new Promise(r=>setTimeout(r,ms))}
-
-function flashFloor(floor){
-  const row=document.querySelector(`.floor-row[data-floor="${floor}"]`);
-  if(row){row.classList.add('floor-flash');setTimeout(()=>row.classList.remove('floor-flash'),400);}
-}
-
-function buildFloors(){
-  const el=document.getElementById('building-floors');
-  el.innerHTML='';
+  // ── floor rows ──
+  const bldFloors=document.getElementById('bld-floors'); bldFloors.innerHTML='';
   for(let f=1;f<=TOTAL_FLOORS;f++){
     const row=document.createElement('div');
-    row.className='floor-row';
-    row.dataset.floor=f;
-    row.innerHTML=`<div class="floor-num-label">${f}</div><div class="floor-bar-area" id="fbar-${f}">
-      ${f===1?'<span style="font-size:10px;color:var(--text2)">LOBBY</span>':''}
-    </div>`;
-    el.appendChild(row);
+    row.className='bld-row'+(f===1?' fl1':'');
+    row.style.height=FH+'px';
+    row.id=`fr-${f}`;
+    row.innerHTML=`<div class="bld-fl-num">${f}</div><div class="bld-fl-content" id="fc-${f}"></div>`;
+    bldFloors.appendChild(row);
   }
-  // Add lift cars
-  for(let li=0;li<3;li++){
+
+  // ── shaft columns + lift cars ──
+  const shafts=document.getElementById('lift-shafts'); shafts.innerHTML='';
+  CFG.forEach((cfg,i)=>{
+    const col=document.createElement('div');
+    col.className='shaft-col'; col.id=`sc-${i}`;
+    col.style.width='52px';
+
+    // range bracket
+    const bracketBottom=(cfg.min-1)*FH;
+    const bracketHeight=(cfg.max-cfg.min+1)*FH;
+    const br=document.createElement('div');
+    br.className=`shaft-range ${cfg.cls}`;
+    br.style.cssText=`bottom:${bracketBottom}px;height:${bracketHeight}px`;
+    col.appendChild(br);
+
+    // floor dots (FL2-8)
+    for(let f=2;f<=TOTAL_FLOORS;f++){
+      const dot=document.createElement('div');
+      dot.className='shaft-dot'; dot.id=`dot-${i}-${f}`;
+      dot.style.bottom=(f-1)*FH + FH/2 - 2.5 + 'px';
+      col.appendChild(dot);
+    }
+
+    // lift car — starts at FL1 (bottom=0)
     const car=document.createElement('div');
-    car.className=`lift-car lift-car-${li+1}`;
-    car.id=`lift-car-${li}`;
-    car.textContent=LIFT_CONFIG[li].label;
-    car.style.right=`${4+(li*22)}px`;
-    document.getElementById('fbar-1').appendChild(car);
-    updateLiftCarPosition(li,1);
-  }
-}
-
-function updateLiftCarPosition(li,floor){
-  const car=document.getElementById(`lift-car-${li}`);
-  if(!car) return;
-  // Move car to correct floor row
-  const targetBar=document.getElementById(`fbar-${Math.round(floor)}`);
-  if(targetBar&&car.parentElement!==targetBar){
-    targetBar.appendChild(car);
-  }
-}
-
-function renderBuildingFloor(floor){
-  const bar=document.getElementById(`fbar-${floor}`);
-  if(!bar) return;
-  // Add delivered chars
-  const delivered=characters.filter(c=>c.delivered&&c.floor===floor);
-  // Clear existing delivered icons
-  bar.querySelectorAll('.floor-delivered-char').forEach(x=>x.remove());
-  delivered.forEach(c=>{
-    const s=document.createElement('span');
-    s.className='floor-delivered-char';
-    s.textContent=c.emoji;
-    bar.appendChild(s);
+    car.className=`lcar ${cfg.cls}`; car.id=`lcar-${i}`;
+    // height = 1 floor minus padding
+    const carH=Math.max(FH*0.82, 36);
+    car.style.cssText=`bottom:4px;height:${carH}px;transition:none`;
+    const paxHtml=passengers[i].map(cid=>{
+      const c=chars.find(x=>x.id===cid); return c?`<span>${c.emoji}</span>`:'';
+    }).join('');
+    car.innerHTML=`<div class="lcar-lbl">${cfg.label}</div><div class="lcar-pax" id="cpax-${i}">${paxHtml}</div>`;
+    col.appendChild(car);
+    shafts.appendChild(col);
   });
 }
 
-function afterAnimation(){
-  const allDone = characters.every(c=>c.delivered);
-  const waiters = characters.filter(c=>!c.delivered&&c.inLift<0&&c.waiting);
-  const remaining = characters.filter(c=>!c.delivered);
+// ── Helpers for car position ──
+function carBottom(floor){ return (floor-1)*FH + 4; }
 
-  if(allDone){
-    showResult(true);
-    return;
+function setCar(li, floor, ms){
+  const car=document.getElementById(`lcar-${li}`); if(!car)return;
+  if(ms>0) car.style.transition=`bottom ${ms}ms linear`;
+  else car.style.transition='none';
+  car.style.bottom=carBottom(floor)+'px';
+}
+
+function updateCarPax(li){
+  const el=document.getElementById(`cpax-${li}`); if(!el)return;
+  el.innerHTML=passengers[li].map(cid=>{
+    const c=chars.find(x=>x.id===cid); return c?`<span>${c.emoji}</span>`:'';
+  }).join('');
+}
+
+function litDot(li,f,on){
+  const d=document.getElementById(`dot-${li}-${f}`); if(!d)return;
+  d.classList.toggle('lit',on);
+}
+
+function placeDelivered(c){
+  const fc=document.getElementById(`fc-${c.floor}`); if(!fc)return;
+  const s=document.createElement('span');
+  s.className='delivered-char'; s.textContent=c.emoji;
+  fc.appendChild(s);
+}
+
+function addEv(){} // stub — event log removed
+
+// ══════════════════════════════════════
+//   ANIMATION ENGINE
+//   Each lift runs independently (Promise.all)
+//   Movement: 1 floor at a time, 1s each
+//   Stop: 0.5s per floor with passengers alighting
+// ══════════════════════════════════════
+async function runAnim(){
+  const snaps=passengers.map(p=>[...p]);
+  await Promise.all(snaps.map((pass,li)=> pass.length>0 ? animLift(li,pass) : Promise.resolve()));
+  onAnimDone();
+}
+
+async function animLift(li, pass){
+  const cfg=CFG[li];
+  const correct=pass.filter(cid=>{const c=chars.find(x=>x.id===cid);return c&&c.floor>=cfg.min&&c.floor<=cfg.max});
+  const wrong=pass.filter(cid=>!correct.includes(cid));
+  const stops=[...new Set(correct.map(cid=>chars.find(x=>x.id===cid).floor))].sort((a,b)=>a-b);
+
+  // highest floor this lift needs to reach:
+  // if correct passengers exist → last stop; otherwise go to cfg.max (all wrong)
+  const topFloor = stops.length > 0 ? stops[stops.length-1] : cfg.max;
+
+  let cur=1;
+
+  // ── PHASE A: go up floor by floor to topFloor ──
+  for(let f=2; f<=topFloor; f++){
+    setCar(li, f, MS_PER_FLOOR);
+    litDot(li, f, true);
+    await delay(MS_PER_FLOOR);
+    cur=f;
+
+    const alighting=correct.filter(cid=>{
+      const c=chars.find(x=>x.id===cid); return c&&c.floor===f;
+    });
+    if(alighting.length>0){
+      const car=document.getElementById(`lcar-${li}`);
+      if(car) car.classList.add('door-open');
+      alighting.forEach(cid=>{
+        const c=chars.find(x=>x.id===cid); if(!c)return;
+        c.delivered=true; c.inLift=-1; delivered++;
+        passengers[li]=passengers[li].filter(x=>x!==cid);
+        placeDelivered(c);
+      });
+      updateCarPax(li);
+      ['s1-del','s2-del'].forEach(id=>document.getElementById(id).textContent=delivered);
+      await delay(MS_STOP);
+      if(car) car.classList.remove('door-open');
+    }
+    litDot(li, f, false);
   }
 
-  if(timeLeft<=0){
-    gameOver('หมดเวลา!');
-    return;
+  // ── PHASE B: come back down floor by floor to FL1 ──
+  for(let f=cur-1; f>=1; f--){
+    setCar(li, f, MS_PER_FLOOR);
+    await delay(MS_PER_FLOOR);
+    cur=f;
   }
 
-  // Some waiting to reassign
+  // release wrong passengers at FL1
+  wrong.forEach(cid=>{
+    const c=chars.find(x=>x.id===cid); if(c){c.inLift=-1; c.waiting=true;}
+  });
+  passengers[li]=[];
+}
+
+function onAnimDone(){
+  if(phase==='end')return;
+  const allDone=chars.every(c=>c.delivered);
+  if(allDone){triggerEnd(true);return;}
+  if(timeLeft<=0){triggerEnd(false,'หมดเวลา!');return;}
+
   phase='assign';
-  document.getElementById('phase-label').textContent='ASSIGN PHASE';
-  document.getElementById('clear-btn').disabled=false;
-  liftPassengers=[[],[],[]];
-  renderLobby();
-  renderLifts();
-  updateConfirmBtn();
-  showMsg(`${remaining.length} คนยังไม่ถึงชั้น — ${waiters.length} คนรอใหม่`);
+  const remaining=chars.filter(c=>!c.delivered);
+  const waiters=chars.filter(c=>c.waiting&&!c.delivered);
+  document.getElementById('s2-bar-msg').innerHTML=
+    `เสร็จรอบนี้ — เหลือ <b>${remaining.length}</b> คน (${waiters.length} คนรอ assign ใหม่)`;
+  document.getElementById('s2-phase').textContent='ROUND DONE';
+  document.getElementById('s2-back-btn').style.display='block';
 }
 
-function gameOver(reason){
-  clearInterval(gameTimer);
-  phase='result';
-  showResult(false,reason);
+function goBackToAssign(){
+  phase='assign';
+  passengers=[[],[],[]];
+  document.getElementById('s1-del').textContent=delivered;
+  renderLobby(); renderLifts(); updateSendBtn();
+  showScreen('s1');
 }
 
-function showResult(win,reason=''){
-  document.getElementById('result-overlay').classList.remove('hidden');
-  document.getElementById('result-title').textContent = win?'🎉 MISSION COMPLETE':'❌ GAME OVER';
-  document.getElementById('result-title').style.color = win?'var(--accent3)':'#ff4444';
-  document.getElementById('result-sub').textContent = win?'ส่งพนักงานถึงที่หมายครบทุกคน!':reason||'ยังส่งพนักงานไม่ครบ';
-  const stats=document.getElementById('result-stats');
-  stats.innerHTML=`
-    <div class="result-stat"><span>Delivered</span><span class="result-val">${deliveredCount} / ${TOTAL_CHARS}</span></div>
-    <div class="result-stat"><span>Time used</span><span class="result-val">${fmtTime(GAME_TIME-timeLeft)} / 1:00</span></div>
-    <div class="result-stat"><span>Remaining</span><span class="result-val">${characters.filter(c=>!c.delivered).length} people</span></div>
-  `;
+// ══ END ══
+function triggerEnd(win,reason=''){
+  if(phase==='end')return;   // already ended — ignore
+  phase='end'; clearInterval(gTimer);
+  setTimeout(()=>{
+    document.getElementById('end-overlay').classList.remove('hidden');
+    const t=document.getElementById('end-title');
+    t.textContent=win?'🎉 MISSION COMPLETE':'❌ GAME OVER';
+    t.style.color=win?'var(--accent3)':'#ff4444';
+    document.getElementById('end-sub').textContent=win?'ส่งพนักงานถึงที่หมายครบทุกคน!':reason;
+    document.getElementById('end-stats').innerHTML=`
+      <div class="end-stat"><span>Delivered</span><span class="end-val">${delivered} / ${TOTAL_CHARS}</span></div>
+      <div class="end-stat"><span>Time used</span><span class="end-val">${fmtT(GAME_TIME-timeLeft)} / 1:00</span></div>
+      <div class="end-stat"><span>Remaining</span><span class="end-val">${chars.filter(c=>!c.delivered).length} คน</span></div>`;
+  },400);
 }
 
-function showTitle(){
-  clearInterval(gameTimer);
-  document.getElementById('result-overlay').classList.add('hidden');
-  document.getElementById('game-screen').classList.add('hidden');
-  document.getElementById('title-screen').classList.remove('hidden');
-}
-
-function fmtTime(s){return`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`}
-
-let msgTimeout=null;
-function showMsg(text){
-  const el=document.getElementById('msg-bar');
-  el.textContent=text;
-  el.classList.add('show');
-  clearTimeout(msgTimeout);
-  msgTimeout=setTimeout(()=>el.classList.remove('show'),2500);
+// ══ TOAST ══
+let toastT=null;
+function toast(msg){
+  const el=document.getElementById('toast');
+  el.textContent=msg; el.classList.add('show');
+  clearTimeout(toastT); toastT=setTimeout(()=>el.classList.remove('show'),2200);
 }
 </script>
 </body>
