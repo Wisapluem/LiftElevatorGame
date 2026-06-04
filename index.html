@@ -92,11 +92,15 @@ body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;h
 .pass-chip .fn{color:var(--accent2);font-weight:700}
 .pass-chip.wrong{border-color:rgba(255,200,0,.45)!important;background:rgba(255,200,0,.07)!important}
 .pass-chip.wrong .fn{color:#ffd600!important}
-#lift-actions{padding:7px 10px;display:flex;gap:8px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
-#send-btn{flex:1;padding:8px;font-family:'Space Mono',monospace;font-size:12px;font-weight:700;letter-spacing:.15em;background:var(--accent3);color:#0a0f1e;border:none;cursor:pointer;text-transform:uppercase;transition:opacity .2s}
-#send-btn:disabled{opacity:.28;cursor:not-allowed}
-#clear-btn{padding:8px 10px;font-family:'Space Mono',monospace;font-size:11px;background:transparent;color:var(--accent2);border:1px solid var(--accent2);cursor:pointer}
-#clear-btn:hover{background:rgba(255,107,53,.1)}
+#lift-actions{padding:7px 10px;display:flex;gap:6px;border-top:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.send-lift-btn{flex:1;padding:8px 4px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;letter-spacing:.1em;border:2px solid;cursor:pointer;text-transform:uppercase;transition:all .2s;background:transparent;line-height:1.3}
+#send-btn-0{border-color:var(--lA);color:var(--lA)}
+#send-btn-0:hover:not(:disabled){background:var(--lA);color:#fff}
+#send-btn-1{border-color:var(--lB);color:var(--lB)}
+#send-btn-1:hover:not(:disabled){background:var(--lB);color:#fff}
+#send-btn-2{border-color:var(--lC);color:var(--lC)}
+#send-btn-2:hover:not(:disabled){background:var(--lC);color:#fff}
+.send-lift-btn:disabled{opacity:.25;cursor:not-allowed}
 
 /* ── STATUS BAR (replaces s2-bar) ── */
 #status-bar{padding:6px 14px;border-top:1px solid rgba(255,255,255,.07);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--surface);font-size:10px;color:var(--text2);min-height:32px}
@@ -185,8 +189,9 @@ body{background:var(--bg);color:var(--text);font-family:'Space Mono',monospace;h
         </div>
       </div>
       <div id="lift-actions">
-        <button id="send-btn" onclick="sendLifts()" disabled>▶ SEND LIFTS</button>
-        <button id="clear-btn" onclick="clearAll()">✕ CLEAR</button>
+        <button class="send-lift-btn" id="send-btn-0" onclick="sendOneLift(0)" disabled>Send</button>
+        <button class="send-lift-btn" id="send-btn-1" onclick="sendOneLift(1)" disabled>Send</button>
+        <button class="send-lift-btn" id="send-btn-2" onclick="sendOneLift(2)" disabled>Send</button>
       </div>
     </div>
   </div>
@@ -225,6 +230,7 @@ const MS_STOP      = 1000;
 // ══ STATE ══
 let CFG=[], chars=[], passengers=[[],[],[]], selChar=null;
 let gTimer=null, timeLeft=GAME_TIME, delivered=0, phase='assign';
+let liftMoving=[false,false,false]; // track per-lift animation state
 
 // ══ UTILS ══
 const rand=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
@@ -261,7 +267,7 @@ function showTitle(){
 function startGame(){
   document.getElementById('title-screen').classList.add('hidden');
   CFG=genCFG(); chars=genChars(); passengers=[[],[],[]]; selChar=null;
-  timeLeft=GAME_TIME; delivered=0; phase='assign';
+  timeLeft=GAME_TIME; delivered=0; phase='assign'; liftMoving=[false,false,false];
   document.getElementById('end-overlay').classList.add('hidden');
   document.getElementById('del-count').textContent=0;
   document.getElementById('tot-count').textContent=TOTAL_CHARS;
@@ -272,8 +278,6 @@ function startGame(){
   document.getElementById('pbar').style.width='100%';
   document.getElementById('status-msg').textContent='เลือกตัวละครและ assign เข้าลิฟต์';
   document.getElementById('status-right').textContent='';
-  document.getElementById('send-btn').disabled=false;
-  document.getElementById('clear-btn').disabled=false;
   renderLobby(); renderLifts(); updateSendBtn();
   buildBldView();
   clearInterval(gTimer);
@@ -305,15 +309,18 @@ function renderLobby(){
 function renderLifts(){
   for(let i=0;i<3;i++){
     const p=document.getElementById(`lp-${i}`); p.innerHTML='';
-    document.getElementById(`lc-${i}`).textContent=`${passengers[i].length}/10`;
-    passengers[i].forEach(cid=>{
-      const c=chars.find(x=>x.id===cid); if(!c)return;
-      const wrong=c.floor<CFG[i].min||c.floor>CFG[i].max;
-      const chip=document.createElement('div');
-      chip.className='pass-chip'+(wrong?' wrong':'');
-      chip.innerHTML=`<span>${c.emoji}</span><span class="fn">${c.floor}</span>`;
-      chip.onclick=e=>{e.stopPropagation();removePax(cid,i)}; p.appendChild(chip);
-    });
+    const moving=liftMoving[i];
+    document.getElementById(`lc-${i}`).textContent=moving?'🔺 MOVING':`${passengers[i].length}/10`;
+    if(!moving){
+      passengers[i].forEach(cid=>{
+        const c=chars.find(x=>x.id===cid); if(!c)return;
+        const wrong=c.floor<CFG[i].min||c.floor>CFG[i].max;
+        const chip=document.createElement('div');
+        chip.className='pass-chip'+(wrong?' wrong':'');
+        chip.innerHTML=`<span>${c.emoji}</span><span class="fn">${c.floor}</span>`;
+        chip.onclick=e=>{e.stopPropagation();removePax(cid,i)}; p.appendChild(chip);
+      });
+    }
   }
   updateSendBtn();
 }
@@ -326,6 +333,7 @@ function pickChar(id){
 }
 function liftClick(i){
   if(phase!=='assign')return;
+  if(liftMoving[i]){toast(`LIFT ${CFG[i].label} กำลังเคลื่อนที่ รอให้กลับ FL1 ก่อน`);return;}
   if(selChar===null){toast('กรุณาเลือกตัวละครก่อน');return;}
   if(passengers[i].length>=MAX_CAP){toast(`LIFT ${CFG[i].label} เต็ม`);return;}
   const c=chars.find(x=>x.id===selChar); if(!c)return;
@@ -333,36 +341,36 @@ function liftClick(i){
   renderLobby(); renderLifts();
 }
 function removePax(cid,i){
-  if(phase!=='assign')return;
+  if(liftMoving[i])return;
   passengers[i]=passengers[i].filter(x=>x!==cid);
   const c=chars.find(x=>x.id===cid); if(c){c.inLift=-1;c.waiting=false;}
   renderLobby(); renderLifts();
-}
-function clearAll(){
-  if(phase!=='assign')return;
-  passengers.forEach(p=>p.forEach(cid=>{const c=chars.find(x=>x.id===cid);if(c){c.inLift=-1;c.waiting=false;}}));
-  passengers=[[],[],[]]; selChar=null; renderLobby(); renderLifts();
 }
 function updateSendBtn(){
   document.getElementById('send-btn').disabled=(passengers.reduce((s,a)=>s+a.length,0)===0||phase!=='assign');
 }
 
-// ══ SEND ══
-function sendLifts(){
-  if(phase!=='assign')return;
-  if(passengers.reduce((s,a)=>s+a.length,0)===0){toast('ยังไม่มีตัวละครในลิฟต์');return;}
-  phase='animating';
-  document.getElementById('main-phase').textContent='LIFT MOVING';
-  document.getElementById('send-btn').disabled=true;
-  document.getElementById('clear-btn').disabled=true;
-  document.getElementById('status-msg').textContent='ลิฟต์กำลังเคลื่อนที่...';
-  document.getElementById('status-right').textContent='';
-  // clear passenger chips from lift UI immediately
+function updateSendBtn(){
   for(let i=0;i<3;i++){
-    document.getElementById(`lp-${i}`).innerHTML='';
-    document.getElementById(`lc-${i}`).textContent='0/10';
+    const btn=document.getElementById(`send-btn-${i}`);
+    if(btn) btn.disabled=(passengers[i].length===0||liftMoving[i]);
   }
-  runAnim();
+}
+
+// send a single lift
+async function sendOneLift(li){
+  if(liftMoving[li])return;
+  if(passengers[li].length===0){toast(`LIFT ${CFG[li].label} ไม่มีผู้โดยสาร`);return;}
+  liftMoving[li]=true;
+  const btn=document.getElementById(`send-btn-${li}`);
+  if(btn) btn.disabled=true;
+  document.getElementById(`lp-${li}`).innerHTML='';
+  document.getElementById(`lc-${li}`).textContent='0/10';
+  document.getElementById('main-phase').textContent='LIFT MOVING';
+  const pass=[...passengers[li]];
+  await animLift(li, pass);
+  liftMoving[li]=false;
+  onAnimDone();
 }
 
 // ══ BUILDING VIEW ══
@@ -437,12 +445,6 @@ function placeDelivered(c){
 }
 
 // ══ ANIMATION ══
-async function runAnim(){
-  const snaps=passengers.map(p=>[...p]);
-  await Promise.all(snaps.map((pass,li)=>pass.length>0?animLift(li,pass):Promise.resolve()));
-  onAnimDone();
-}
-
 async function animLift(li,pass){
   const cfg=CFG[li];
   const correct=pass.filter(cid=>{const c=chars.find(x=>x.id===cid);return c&&c.floor>=cfg.min&&c.floor<=cfg.max});
@@ -489,17 +491,12 @@ function onAnimDone(){
   if(allDone){triggerEnd(true);return;}
   if(timeLeft<=0){triggerEnd(false,'หมดเวลา!');return;}
 
-  // re-enable assign
-  phase='assign';
   document.getElementById('main-phase').textContent='ASSIGN PHASE';
-  document.getElementById('send-btn').disabled=false;
-  document.getElementById('clear-btn').disabled=false;
   const remaining=chars.filter(c=>!c.delivered);
   const waiters=chars.filter(c=>c.waiting&&!c.delivered);
-  document.getElementById('status-msg').innerHTML=`เสร็จรอบนี้ — เหลือ <b>${remaining.length}</b> คน`;
-  document.getElementById('status-right').innerHTML=`<span style="color:#ffd600">${waiters.length} คนรอ assign ใหม่</span>`;
+  document.getElementById('status-msg').innerHTML=`เหลือ <b>${remaining.length}</b> คน`;
+  document.getElementById('status-right').innerHTML=waiters.length>0?`<span style="color:#ffd600">${waiters.length} คนรอ assign ใหม่</span>`:'';
   renderLobby(); renderLifts(); updateSendBtn();
-  // reset car positions for re-use (cars already at FL1 from animation)
 }
 
 // ══ END ══
